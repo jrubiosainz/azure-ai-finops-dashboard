@@ -1,0 +1,11 @@
+node_modules/
+.cache/
+web/dist/
+*.log
+.env
+.env.*
+!.env.example
+.azure/
+test-results/
+playwright-report/
+.DS_Store

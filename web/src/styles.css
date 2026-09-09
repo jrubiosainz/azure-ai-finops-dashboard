@@ -1,0 +1,1773 @@
+/*
+ * The board's material system.
+ *
+ * A graphite quotation board mounted on grey stock. Two planes only: the board face,
+ * where figures are quoted, and the paper, where they are broken down. Rules and
+ * alignment carry the structure; there are no cards and no decorative shadows.
+ */
+
+:root {
+  /* Stock the board is mounted on: grey quotation paper, not cream. */
+  --paper: #dedbd4;
+  --paper-lift: #e8e5df;
+  --paper-sunk: #cfccc4;
+  --ink: #14181c;
+  --ink-soft: #4a5058;
+  --ink-faint: #757b83;
+  --rule: #b6b2a9;
+  --rule-strong: #8e8a81;
+
+  /* The board face. */
+  --board: #14181c;
+  --board-lift: #1d2329;
+  --board-sunk: #0d1013;
+  --flap: #eceae4;
+  --flap-soft: #9aa3ac;
+  --flap-faint: #6d757e;
+  --seam: #000;
+
+  /* Market semantics: red is money leaving, green is efficiency. */
+  --debit: #c2381f;
+  --debit-lift: #e2543a;
+  --credit: #1e6f5c;
+  --credit-lift: #2f9179;
+  --brass: #b0842e;
+  --brass-lift: #d6a747;
+
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --gutter: clamp(1rem, 3vw, 2.75rem);
+  --flip: 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* Faint horizontal ruling, as on printed quotation stock. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 27px,
+    rgba(120, 116, 108, 0.07) 27px 28px
+  );
+}
+
+::selection {
+  background: var(--brass);
+  color: #14181c;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.board :focus-visible {
+  outline-color: var(--brass-lift);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ *
+ * Shell
+ * ------------------------------------------------------------------ */
+
+.shell {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 0 var(--gutter) 5rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * The board
+ * ------------------------------------------------------------------ */
+
+.mode-banner,
+.error-banner {
+  margin: 0;
+  padding: 0.7rem var(--gutter);
+  background: var(--brass);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.error-banner {
+  background: #ffe2d6;
+}
+
+.scope-note {
+  margin: 0;
+  padding-bottom: 0.8rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.board {
+  background: var(--board);
+  color: var(--flap);
+  padding: 1.25rem var(--gutter) 0;
+  border-bottom: 3px solid var(--brass);
+  box-shadow: 0 18px 34px -22px rgba(10, 12, 15, 0.85);
+  position: relative;
+}
+
+/* The board and the tape run full-bleed, but their contents stay on the same
+   measure as the ledgers below so the columns line up down the whole page. */
+.board__head,
+.quotes,
+.tape__head,
+.tape__plot,
+.tape__cursor {
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.board::after {
+  /* Brass channel along the bottom lip of the board casing. */
+  content: '';
+  position: absolute;
+  inset: auto 0 -3px 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brass) 0%, var(--brass-lift) 22%, var(--brass) 60%);
+}
+
+.board__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem 2rem;
+  padding-bottom: 1.15rem;
+  border-bottom: 1px solid #2b3238;
+}
+
+.board__title {
+  font-size: clamp(1.05rem, 2.2vw, 1.6rem);
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-wrap: balance;
+}
+
+.board__sub {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--flap-soft);
+  margin-top: 0.4rem;
+}
+
+.board__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stamp {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--flap-faint);
+  text-align: right;
+  line-height: 1.6;
+}
+
+.stamp b {
+  display: block;
+  color: var(--flap-soft);
+  font-weight: 500;
+}
+
+/* Refresh: the board's brass piston. */
+.piston {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.62rem 1.05rem;
+  background: var(--brass);
+  color: #14181c;
+  font-weight: 700;
+  font-size: 0.76rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  border-radius: 1px;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.piston:hover:not(:disabled) {
+  background: var(--brass-lift);
+}
+
+.piston:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.piston:disabled {
+  cursor: progress;
+  background: #4a4536;
+  color: #a49b83;
+}
+
+.piston__led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #14181c;
+}
+
+.piston:disabled .piston__led {
+  background: var(--brass-lift);
+  animation: pulse 900ms ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Quotation cells — the split-flap row
+ * ------------------------------------------------------------------ */
+
+.quotes {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border-left: 1px solid #262d33;
+}
+
+.quote {
+  padding: 1.15rem 1rem 1.35rem;
+  border-right: 1px solid #262d33;
+  min-width: 0;
+  position: relative;
+}
+
+.quote__tab {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #14181c;
+  background: var(--brass);
+  padding: 0.1rem 0.42rem;
+  margin-bottom: 0.85rem;
+  border-radius: 1px;
+}
+
+.quote--muted .quote__tab {
+  background: #39414a;
+  color: var(--flap-soft);
+}
+
+.quote__value {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 2.5vw, 2.05rem);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.2em;
+  min-height: 1em;
+}
+
+.quote__unit {
+  font-size: 0.5em;
+  font-weight: 500;
+  color: var(--flap-soft);
+  letter-spacing: 0;
+}
+
+.quote__note {
+  font-size: 0.72rem;
+  color: var(--flap-soft);
+  margin-top: 0.6rem;
+  line-height: 1.35;
+}
+
+/* Individual flap character. */
+.flap {
+  display: inline-block;
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+}
+
+.flap--turning {
+  animation: flip var(--flip) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes flip {
+  0% {
+    transform: rotateX(-88deg);
+    filter: brightness(0.35);
+  }
+  60% {
+    filter: brightness(1.25);
+  }
+  100% {
+    transform: rotateX(0deg);
+    filter: brightness(1);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * The tape — daily spend, full width under the board
+ * ------------------------------------------------------------------ */
+
+.tape {
+  background: var(--board-sunk);
+  padding: 1.1rem var(--gutter) 1.25rem;
+  color: var(--flap);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.tape__head {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+
+.tape__title {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--flap-soft);
+}
+
+.tape__legend {
+  display: flex;
+  gap: 1.1rem;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--flap-faint);
+}
+
+.tape__legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 0.4rem;
+  vertical-align: -1px;
+}
+
+.tape__plot {
+  display: block;
+  width: 100%;
+  height: 132px;
+  overflow: visible;
+}
+
+.tape__bar {
+  cursor: crosshair;
+}
+
+.tape__cursor {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--flap-soft);
+  margin-top: 0.5rem;
+  min-height: 1.2em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tape__cursor b {
+  color: var(--flap);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ *
+ * Console — the two banks that set the cut and the magnitude
+ * ------------------------------------------------------------------ */
+
+.console {
+  border-bottom: 1px solid var(--rule-strong);
+  padding: 1.15rem 0 1.3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4rem 4rem;
+  align-items: start;
+}
+
+.console__bank {
+  display: grid;
+  grid-template-columns: minmax(0, 8rem) auto;
+  gap: 0 1rem;
+  align-items: start;
+}
+
+.console__label {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding-top: 0.3rem;
+}
+
+.console__label span {
+  display: block;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--sans);
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+  margin-top: 0.3rem;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+.console__knobs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* Drawknob: pulled = active. */
+.knob {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.3rem 0.62rem;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-lift);
+  color: var(--ink-soft);
+  border-radius: 1px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease,
+    box-shadow 140ms ease, transform 140ms ease;
+  box-shadow: inset 0 -2px 0 rgba(120, 116, 108, 0.28);
+  max-width: 15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knob:hover:not(:disabled) {
+  border-color: var(--ink-soft);
+  color: var(--ink);
+}
+
+.knob[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--flap);
+  box-shadow: inset 0 -2px 0 var(--brass);
+  transform: translateY(1px);
+}
+
+/* The pressed knob is already inverted, so hovering it must not repaint the label
+   in ink — that would leave the active axis unreadable on its own background. */
+.knob[aria-pressed='true']:hover:not(:disabled) {
+  color: var(--flap);
+  border-color: var(--ink);
+}
+
+.knob:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.knob--axis {
+  padding-inline: 0.85rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Cascade — the drill-down is the chart
+ * ------------------------------------------------------------------ */
+
+.cascade {
+  background: var(--board);
+  color: var(--flap);
+  padding: 1.9rem var(--gutter) 2.2rem;
+  border-block: 1px solid #000;
+}
+
+.cascade__head,
+.rails {
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.cascade__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.cascade__title {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--flap-soft);
+  font-weight: 500;
+}
+
+/* The route reads left to right like a filed docket line. */
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #2c343c;
+  background: var(--board-lift);
+  color: var(--flap-soft);
+  border-radius: 1px;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.crumb + .crumb::before,
+.crumb--root + .crumb::before {
+  content: '';
+}
+
+.crumb:hover {
+  color: var(--flap);
+  border-color: var(--brass);
+}
+
+.crumb[aria-current='true'] {
+  color: var(--board);
+  background: var(--brass-lift);
+  border-color: var(--brass-lift);
+}
+
+.crumb__level {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.rails {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.rail {
+  display: grid;
+  grid-template-columns: 11rem 1fr 9rem;
+  align-items: center;
+  gap: 0 1rem;
+  /* Each rail settles a beat after the one above it, so a drill reads as a cut
+     travelling down the estate rather than four bands blinking at once. */
+  animation: settle 460ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--depth, 0) * 55ms);
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.rail__name {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--flap-faint);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rail__count {
+  font-size: 0.6rem;
+  color: #4d555d;
+  letter-spacing: 0;
+}
+
+.rail__band {
+  display: grid;
+  height: 2.6rem;
+  gap: 2px;
+  background: var(--board-sunk);
+  border: 1px solid #000;
+  /* Track sizes carry the proportions, so the whole band re-flows in one pass. */
+  transition: grid-template-columns var(--flip);
+}
+
+.seg {
+  position: relative;
+  overflow: hidden;
+  background: #33404b;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: var(--flap);
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.seg--ai {
+  background: #4a5a3f;
+}
+
+.seg:hover:not(.seg--rest):not(.seg--on) {
+  background: #5d6f7d;
+  box-shadow: inset 0 0 0 1px var(--brass-lift);
+}
+
+.seg--ai:hover:not(.seg--on) {
+  background: #6b8059;
+}
+
+.seg--on {
+  background: var(--brass);
+  color: var(--board);
+}
+
+.seg--on:hover {
+  background: var(--brass-lift);
+}
+
+.seg--rest {
+  background: repeating-linear-gradient(
+    -45deg,
+    #1f262c,
+    #1f262c 3px,
+    #262e35 3px,
+    #262e35 6px
+  );
+  color: var(--flap-faint);
+}
+
+.seg__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+  height: 100%;
+  padding: 0 0.5rem;
+  overflow: hidden;
+}
+
+.seg__label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seg__value {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  opacity: 0.72;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rail__foot {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  text-align: right;
+  color: var(--flap-faint);
+}
+
+.rail__clear {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--brass-lift);
+  border: 1px solid #2c343c;
+  background: var(--board-lift);
+  padding: 0.2rem 0.45rem;
+  border-radius: 1px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 140ms ease, color 140ms ease;
+}
+
+.rail__clear:hover {
+  border-color: var(--brass);
+  color: var(--flap);
+}
+
+.rail--void {
+  grid-template-columns: 11rem 1fr;
+  opacity: 0.55;
+}
+
+.rail__empty {
+  font-size: 0.74rem;
+  color: var(--flap-faint);
+  font-style: italic;
+  padding: 0.7rem 0;
+  border-top: 1px dashed #2c343c;
+}
+
+/* ------------------------------------------------------------------ *
+ * Ledger sections
+ * ------------------------------------------------------------------ */
+
+.ledger {
+  padding-top: 2.5rem;
+}
+
+.ledger__head {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid var(--ink);
+}
+
+.ledger__title {
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+.ledger__note {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  max-width: 54ch;
+  margin-left: auto;
+  text-align: right;
+  text-wrap: pretty;
+}
+
+.cell-id {
+  color: var(--ink-faint);
+  opacity: 0.62;
+}
+
+.ledger__scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+thead th {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-align: right;
+  padding: 0.75rem 0.7rem 0.5rem;
+  border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+thead th:first-child {
+  text-align: left;
+  padding-left: 0;
+}
+
+thead th:hover {
+  color: var(--ink);
+}
+
+thead th[aria-sort='descending']::after {
+  content: ' ▾';
+  color: var(--debit);
+}
+
+thead th[aria-sort='ascending']::after {
+  content: ' ▴';
+  color: var(--debit);
+}
+
+tbody td {
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--rule);
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+tbody td:first-child {
+  text-align: left;
+  padding-left: 0;
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  font-weight: 500;
+  white-space: normal;
+  min-width: 13rem;
+}
+
+tbody tr {
+  transition: background 120ms ease;
+}
+
+tbody tr:hover {
+  background: var(--paper-lift);
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(180, 176, 168, 0.14);
+}
+
+tbody tr:nth-child(even):hover {
+  background: var(--paper-lift);
+}
+
+.cell-sub {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--ink-faint);
+  font-weight: 400;
+  margin-top: 0.15rem;
+  letter-spacing: 0.01em;
+}
+
+.num--zero {
+  color: var(--ink-faint);
+}
+
+.num--debit {
+  color: var(--debit);
+  font-weight: 700;
+}
+
+.num--credit {
+  color: var(--credit);
+}
+
+/* Share bar drawn into the row, not a separate progress widget. */
+.share {
+  display: block;
+  height: 3px;
+  background: var(--rule);
+  margin-top: 0.3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.share i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  transform-origin: 0 50%;
+  background: var(--debit);
+  transition: transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ------------------------------------------------------------------ *
+ * Call tape — per-call evidence and its coverage assay
+ * ------------------------------------------------------------------ */
+
+.tapecalls {
+  padding-top: 3.25rem;
+}
+
+.tapecalls__head {
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.4rem;
+}
+
+.tapecalls__title {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.tapecalls__note {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin-top: 0.4rem;
+  max-width: 62ch;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.assay {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 1.5rem 2.5rem;
+  padding: 1.3rem 0 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.assay__figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2.25rem;
+  align-content: start;
+}
+
+.figure b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 1.65rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure span {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 0.4rem;
+}
+
+.figure--ok b {
+  color: var(--credit);
+}
+
+.figure--warn b {
+  color: var(--brass);
+}
+
+.figure--off b {
+  color: var(--debit);
+}
+
+/* The gauge is the argument: a hairline of coverage against the full billed width. */
+.gauge {
+  position: relative;
+  height: 1.5rem;
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule-strong);
+  overflow: hidden;
+}
+
+.gauge__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--fill, 0));
+  background: var(--credit);
+  transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gauge__mark {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 2px;
+  background: var(--debit);
+}
+
+.assay__read {
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin-top: 0.7rem;
+  text-wrap: pretty;
+}
+
+.assay__read b {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.assay__grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.9rem 2rem;
+  border-top: 1px dashed var(--rule);
+  padding-top: 1.1rem;
+}
+
+.assay__grid dt {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.assay__grid dd {
+  font-size: 0.84rem;
+  margin-top: 0.25rem;
+  color: var(--ink-soft);
+}
+
+.assay__grid code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: var(--paper-sunk);
+  padding: 0.02em 0.28em;
+}
+
+.tapecalls__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 1.2rem 0 0.9rem;
+}
+
+/* The tape itself: one ruled line per call, read top-down like a ticker. */
+.calls {
+  border-top: 1px solid var(--rule-strong);
+  max-height: 32rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.call {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(8rem, 1.4fr) 6rem minmax(8rem, 1fr) 7rem 5rem;
+  gap: 0 1rem;
+  align-items: center;
+  padding: 0.42rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.call:hover {
+  background: var(--paper-lift);
+}
+
+.call--failed {
+  box-shadow: inset 3px 0 0 var(--debit);
+  padding-left: 0.5rem;
+}
+
+.call__at {
+  color: var(--ink-faint);
+  font-size: 0.68rem;
+}
+
+.call__who {
+  overflow: hidden;
+}
+
+.call__who b {
+  font-weight: 600;
+}
+
+.call__who em {
+  font-style: normal;
+  color: var(--ink-faint);
+  display: block;
+  font-size: 0.66rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.call__op {
+  color: var(--ink-soft);
+}
+
+.call__tok {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Input/output split drawn straight into the line. */
+.call__split {
+  flex: 0 0 2.5rem;
+  height: 3px;
+  background: var(--credit);
+  position: relative;
+  overflow: hidden;
+}
+
+.call__split::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--in, 0));
+  background: var(--brass);
+}
+
+.call__none {
+  color: var(--ink-faint);
+  font-style: italic;
+  font-size: 0.68rem;
+}
+
+.call__lat {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ink-soft);
+}
+
+.call__lat i {
+  flex: 0 0 2rem;
+  height: 3px;
+  background: var(--rule);
+  transform-origin: 0 50%;
+  transform: scaleX(max(var(--lat, 0), 0.04));
+}
+
+.call__cost {
+  text-align: right;
+}
+
+.tapecalls__more {
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  padding-top: 0.7rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Provenance marks
+ * ------------------------------------------------------------------ */
+
+.mark {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.08rem 0.36rem;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  white-space: nowrap;
+}
+
+.mark--billed {
+  color: #0f5c49;
+  background: rgba(30, 111, 92, 0.14);
+}
+
+.mark--metered {
+  color: #1b4f7a;
+  background: rgba(27, 79, 122, 0.13);
+}
+
+.mark--derived {
+  color: #8a5a10;
+  background: rgba(176, 132, 46, 0.17);
+}
+
+.mark--modelled {
+  color: #9a2f19;
+  background: rgba(194, 56, 31, 0.13);
+}
+
+.mark--none {
+  color: var(--ink-faint);
+  background: transparent;
+}
+
+/* ------------------------------------------------------------------ *
+ * Register — the use-case cut the bill cannot make
+ * ------------------------------------------------------------------ */
+
+.register {
+  margin-top: 3rem;
+  border-top: 2px solid var(--ink);
+  padding-top: 1.15rem;
+}
+
+.register__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem 3rem;
+  flex-wrap: wrap;
+}
+
+.register__title {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin: 0;
+}
+
+.register__note {
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  margin: 0.5rem 0 0;
+  max-width: 78ch;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.register__note code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  background: var(--paper-sunk);
+  padding: 0.05rem 0.3rem;
+}
+
+.register__knobs {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.register__list {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--rule-strong);
+  counter-reset: case;
+}
+
+.case {
+  border-bottom: 1px solid var(--rule);
+  counter-increment: case;
+  animation: case-in 520ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes case-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+/* The handle is the whole comparison: who, how much of the group, how much in full. */
+.case__handle {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 2.2rem minmax(11rem, 20rem) minmax(0, 1fr) 9.5rem;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.95rem 0.6rem 0.95rem 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  transition: background-color 200ms ease;
+}
+
+.case__handle::before {
+  content: counter(case, decimal-leading-zero);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  transition: color 200ms ease;
+}
+
+.case__handle:hover {
+  background: var(--paper-sunk);
+}
+
+.case__handle:hover::before,
+.case--open .case__handle::before {
+  color: var(--brass);
+}
+
+.case__ident {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.case__name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.case__owner {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.case__bar {
+  position: relative;
+  display: block;
+  height: 0.6rem;
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule-strong);
+  overflow: hidden;
+}
+
+.case__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--share, 0));
+  background: var(--brass);
+  transition: transform 760ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.case__value {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Collapsed rows stay in the flow so the reveal can be animated rather than cut. */
+.case__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--flip);
+}
+
+.case--open .case__body {
+  grid-template-rows: 1fr;
+}
+
+.case__inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.case__desc {
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  max-width: 74ch;
+  margin: 0 0 1.1rem;
+  padding-top: 0.2rem;
+  line-height: 1.6;
+}
+
+.case__figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem 2rem;
+  margin: 0 0 1.3rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px dashed var(--rule);
+}
+
+.case__figures dt {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.case__figures dd {
+  font-family: var(--mono);
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+  margin: 0.3rem 0 0;
+}
+
+.case__figures em {
+  font-style: normal;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+/* Input against output, because the ratio is the lever a reviewer can actually pull. */
+.split {
+  margin-bottom: 1.4rem;
+}
+
+.split__bar {
+  position: relative;
+  height: 1.1rem;
+  background: var(--credit);
+  border: 1px solid var(--rule-strong);
+  overflow: hidden;
+}
+
+.split__in {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(var(--share, 0));
+  background: var(--brass);
+  transition: transform 760ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.split__read {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 0.5rem 0 0;
+}
+
+.split__read b {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1.6rem 2.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.roster__label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  margin: 0 0 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.4rem;
+}
+
+.roster__label span {
+  color: var(--ink-faint);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.roster__col ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.roster__col li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.4rem 0;
+  border-bottom: 1px dotted var(--rule);
+  font-size: 0.8rem;
+}
+
+.roster__col li b {
+  font-family: var(--mono);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster__col li span {
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster__col li em {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.roster__col li.is-unbilled b {
+  color: var(--debit);
+}
+
+.case__trace {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  margin: 0 0 1.2rem;
+  line-height: 1.7;
+}
+
+.case__trace code {
+  background: var(--paper-sunk);
+  padding: 0.05rem 0.3rem;
+  color: var(--ink-soft);
+}
+
+.register__foot {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin: 1.2rem 0 0;
+  max-width: 82ch;
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+/* ------------------------------------------------------------------ *
+ * Notice — what Azure cannot answer
+ * ------------------------------------------------------------------ */
+
+.notice {
+  margin-top: 3rem;
+  border-top: 2px solid var(--ink);
+  padding-top: 1.15rem;
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: 1.5rem;
+}
+
+.notice__label {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--debit);
+}
+
+.notice p {
+  margin: 0 0 0.7rem;
+  max-width: 74ch;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+
+.notice p:last-child {
+  margin-bottom: 0;
+}
+
+.notice strong {
+  color: var(--ink);
+}
+
+.notice code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  background: var(--paper-sunk);
+  padding: 0.05rem 0.3rem;
+}
+
+.notice details {
+  margin-top: 0.85rem;
+}
+
+.notice summary {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.notice details ul {
+  margin: 0.7rem 0 0;
+  padding-left: 1.1rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  line-height: 1.7;
+}
+
+/* ------------------------------------------------------------------ *
+ * States
+ * ------------------------------------------------------------------ */
+
+.curtain {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+  background: var(--board);
+  color: var(--flap);
+  padding: 2rem;
+}
+
+.curtain__title {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.curtain p {
+  max-width: 52ch;
+  color: var(--flap-soft);
+  margin: 0 auto;
+  font-size: 0.9rem;
+}
+
+.curtain code {
+  font-family: var(--mono);
+  background: var(--board-lift);
+  padding: 0.15rem 0.4rem;
+  color: var(--flap);
+}
+
+.empty {
+  padding: 2.5rem 0;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* ------------------------------------------------------------------ *
+ * Adaptation
+ * ------------------------------------------------------------------ */
+
+@media (max-width: 1180px) {
+  .quotes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .quote:nth-child(-n + 3) {
+    border-bottom: 1px solid #262d33;
+  }
+  .assay {
+    grid-template-columns: 1fr;
+  }
+  .call {
+    grid-template-columns: 7rem minmax(7rem, 1.4fr) minmax(7rem, 1fr) 6rem 4.5rem;
+  }
+  .call__op {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .console,
+  .notice {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+  .console__bank {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .console__label {
+    padding-top: 0;
+  }
+  .rail {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+  .rail--void {
+    grid-template-columns: 1fr;
+  }
+  .rail__foot {
+    text-align: left;
+  }
+  .ledger__note {
+    text-align: left;
+    margin-left: 0;
+  }
+  .board__actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+  /* The share bar is the least useful column at this width, so it yields first. */
+  .case__handle {
+    grid-template-columns: 1.8rem minmax(0, 1fr) 8rem;
+    gap: 1rem;
+  }
+  .case__bar {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .quotes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .quote:nth-child(-n + 4) {
+    border-bottom: 1px solid #262d33;
+  }
+  .tape__plot {
+    height: 104px;
+  }
+  .call {
+    grid-template-columns: minmax(7rem, 1fr) minmax(6rem, 1fr) 4.5rem;
+    row-gap: 0.15rem;
+  }
+  .call__at,
+  .call__lat {
+    display: none;
+  }
+  body {
+    font-size: 14px;
+  }
+  .roster__col li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .roster__col li span {
+    grid-column: 1 / -1;
+    font-size: 0.74rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

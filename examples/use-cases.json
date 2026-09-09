@@ -1,0 +1,12 @@
+[
+  {
+    "id": "customer-support",
+    "display": "Atencion al cliente",
+    "description": "Ejemplo: soporte y recuperacion de conocimiento.",
+    "owner": "Equipo de soporte",
+    "account": "YOUR_FOUNDRY_ACCOUNT",
+    "resourceGroup": "YOUR_RESOURCE_GROUP",
+    "deployments": ["support-chat", "support-embedding"],
+    "agents": ["support-triage", "support-escalation", "support-retrieval"]
+  }
+]

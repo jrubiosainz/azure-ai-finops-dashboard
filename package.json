@@ -1,0 +1,36 @@
+{
+  "name": "azure-foundry-finops",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.9.0"
+  },
+  "description": "FinOps dashboard for Azure AI Foundry — cost, token and call attribution across resource groups, resources, projects, agents and models.",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run api\" \"npm run web\"",
+    "api": "node --env-file-if-exists=.env server/index.mjs",
+    "web": "vite --config web/vite.config.js",
+    "build": "vite build --config web/vite.config.js",
+    "prestart": "npm run build",
+    "start": "node --env-file-if-exists=.env server/index.mjs",
+    "predemo": "npm run build",
+    "demo": "node --env-file-if-exists=.env server/index.mjs --demo",
+    "sync": "node --env-file-if-exists=.env server/sync.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0",
+    "compression": "^1.7.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "framer-motion": "^11.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^6.0.7"
+  }
+}
